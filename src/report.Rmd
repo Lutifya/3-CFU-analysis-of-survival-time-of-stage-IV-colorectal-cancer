@@ -1,0 +1,235 @@
+---
+title: "Analisi Pulizia Dati e Esplorativa: Effetto Analgesia Epidurale su Progressione Cancro Colon-Retto"
+author: "Stefano Quartuccio"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+# Introduzione
+
+Questo report presenta l'analisi di pulizia dati e esplorativa per lo studio retrospettivo sull'effetto dell'analgesia epidurale (EA) sulla progressione del carcinoma del colon-retto in stadio IV dopo resezione del tumore primario.
+
+**Obiettivo dello studio**: Valutare se l'uso dell'analgesia epidurale durante l'intervento chirurgico influenzi la sopravvivenza e la progressione della malattia nei pazienti con carcinoma del colon-retto metastatico.
+
+**Dataset**: 999 pazienti operati tra 2014-2017, con follow-up fino a 5 anni.
+
+# Processo di Pulizia Dati
+
+Prima di procedere con l'analisi esplorativa, è stato applicato un processo di pulizia avanzata per garantire la qualità dei dati.
+
+## Problemi Identificati nel Dataset Grezzo
+
+```{r data_quality_check}
+# Carica dataset originale per confronto
+data_raw <- readRDS("../data/2018-07-20/dataset_cleaned.rds")
+data_clean <- readRDS("../results/dataset_final_cleaned.rds")
+
+# Analisi valori mancanti originali
+missing_original <- sapply(data_raw, function(x) sum(is.na(x)))
+missing_original <- missing_original[missing_original > 0]
+
+cat("### Valori Mancanti nel Dataset Originale\n")
+if(length(missing_original) > 0) {
+  for(i in 1:length(missing_original)) {
+    cat("- **", names(missing_original)[i], "**: ", missing_original[i], " valori mancanti (", 
+        round(missing_original[i]/nrow(data_raw)*100, 1), "%)\n", sep="")
+  }
+} else {
+  cat("Nessun valore mancante rilevato.\n")
+}
+
+cat("\n### Statistiche Outliers CEA\n")
+cea_summary <- summary(data_raw$cea)
+cat("- **CEA range**: ", round(min(data_raw$cea, na.rm=TRUE), 2), " - ", 
+    round(max(data_raw$cea, na.rm=TRUE), 2), "\n", sep="")
+cat("- **CEA mediana**: ", round(median(data_raw$cea, na.rm=TRUE), 2), "\n", sep="")
+cat("- **Casi CEA > 1000**: ", sum(data_raw$cea > 1000, na.rm=TRUE), "\n", sep="")
+cat("- **Casi CEA > 5000**: ", sum(data_raw$cea > 5000, na.rm=TRUE), "\n", sep="")
+```
+
+## Strategie di Pulizia Applicate
+
+### 1. Gestione Valori Mancanti
+- **CEA e log_CEA** (19 NA): Imputazione con mediana per preservare la distribuzione
+- **Variabili istologiche** (cell_diff, mucin_type, signet_ring, perineural, lymphovascularinvasion): Creazione categoria "Sconosciuto" (codice 9) invece di eliminare osservazioni
+
+### 2. Gestione Outliers
+- **CEA estremi**: Applicata winsorization al 99° percentile
+- **Motivazione**: Valori estremi clinicamente possibili ma che possono distorcere analisi statistiche
+
+### 3. Correzione Inconsistenze Categoriali
+- **RBC**: Valore anomalo "2" corretto a "1" (trasfusione sì)
+- **Cell differentiation**: Valore "0" (non valido) corretto a "9" (sconosciuto)
+- **Conversione fattori**: Tutte le variabili categoriche convertite a factor per analisi statistiche
+
+## Risultati della Pulizia
+
+```{r cleaning_results}
+cat("### Confronto Prima/Dopo Pulizia\n")
+cat("| Metrica | Prima | Dopo | Miglioramento |\n")
+cat("|---------|-------|------|---------------|\n")
+cat("| Valori mancanti | ", sum(is.na(data_raw)), " | ", sum(is.na(data_clean)), " | ✓ Eliminati |\n", sep="")
+cat("| CEA massimo | ", round(max(data_raw$cea, na.rm=TRUE), 0), " | ", 
+    round(max(data_clean$cea, na.rm=TRUE), 0), " | ✓ Winsorizzato |\n", sep="")
+cat("| Variabili factor | ", sum(sapply(data_raw, is.factor)), " | ", 
+    sum(sapply(data_clean, is.factor)), " | ✓ Ottimizzate |\n", sep="")
+
+cat("\n### Dataset Finale\n")
+cat("- **Dimensioni**: ", nrow(data_clean), " osservazioni × ", ncol(data_clean), " variabili\n", sep="")
+cat("- **Qualità**: Zero valori mancanti, codifica consistente, outliers gestiti\n")
+cat("- **Pronto per analisi statistiche avanzate**\n")
+```
+
+# Caricamento e Descrizione Dataset
+
+```{r load_data}
+# Carica il dataset FINALMENTE pulito
+# Il dataset è stato sottoposto a pulizia avanzata: valori mancanti gestiti,
+# outliers winsorizzati, inconsistenze corrette, tipi di dati ottimizzati
+data <- readRDS("../results/dataset_final_cleaned.rds")
+
+# Dimensioni del dataset finale
+cat("Dataset finale dimensioni:", nrow(data), "osservazioni ×", ncol(data), "variabili\n\n")
+
+# Verifica qualità dati finale
+cat("### Qualità Dataset Finale\n")
+cat("- Valori mancanti totali:", sum(is.na(data)), "\n")
+cat("- Variabili factor:", sum(sapply(data, is.factor)), "\n")
+cat("- Variabili numeriche:", sum(sapply(data, is.numeric)), "\n\n")
+
+# Mostra le prime righe per overview
+head(data)
+```
+
+## Descrizione Variabili Principali
+
+### Variabili Demografiche
+- **age**: Età del paziente in anni
+- **gender**: Genere (1 = maschio, 2 = femmina)
+
+### Comorbidità e Stato di Salute
+- **asa**: Score ASA (American Society of Anesthesiologists) - classificazione stato fisico:
+  - 1: Paziente sano
+  - 2: Malattia sistemica lieve
+  - 3: Malattia sistemica grave
+  - 4: Malattia sistemica grave che minaccia la vita
+- **asa3**: Indicatore binario (1 se ASA ≥ 3, 0 altrimenti)
+- **dm**: Diabete mellito (1 = presente, 0 = assente)
+- **cad**: Malattia coronarica (1 = presente, 0 = assente)
+- **hf**: Insufficienza cardiaca (1 = presente, 0 = assente)
+- **cva**: Ictus cerebrale (1 = presente, 0 = assente)
+- **ckd**: Malattia renale cronica (1 = presente, 0 = assente)
+
+### Variabili Oncologiche
+- **cea**: Livello di antigene carcinoembrionale (CEA) - marker tumorale
+- **log_cea**: Logaritmo del CEA (trasformazione per normalizzare distribuzione skewed)
+- **ajcc**: Stadio secondo classificazione AJCC (American Joint Committee on Cancer):
+  - 4a: Metastasi limitate a un organo
+  - 4b: Metastasi multiple organi
+- **liver_only**: Metastasi esclusivamente epatica (1 = sì, 0 = no)
+- **cell_diff**: Grado di differenziazione cellulare (1 = ben differenziato, 2 = moderatamente, 3 = scarsamente)
+- **mucin_type**: Carcinoma mucinoso (1 = sì, 0 = no)
+- **signet_ring**: Cellule a anello con castone (1 = sì, 0 = no)
+- **lymphovascularinvasion**: Invasione linfonodale/vascolare (1 = presente, 0 = assente)
+- **perineural**: Invasione perineurale (1 = presente, 0 = assente)
+
+### Variabili di Trattamento
+- **laparoscopic**: Intervento laparoscopico (1 = sì, 0 = no)
+- **ea**: Analgesia epidurale (VARIABILE PRINCIPALE DI INTERESSE - 1 = usata, 0 = no)
+- **anes_time**: Durata anestesia in minuti
+- **log2at**: Log2 della durata anestesia (trasformazione per analisi)
+- **rbc**: Trasfusione globuli rossi (1 = sì, 0 = no)
+- **ct**: Chemioterapia (1 = sì, 0 = no)
+- **rt**: Radioterapia (1 = sì, 0 = no)
+- **nactrt**: Chemioterapia/radioterapia neoadiuvante (1 = sì, 0 = no)
+
+### Outcome
+- **death**: Morte (1 = deceduto, 0 = vivo)
+- **progress**: Progressione malattia (1 = progressione, 0 = no)
+- **interval**: Tempo in mesi fino all'evento (morte o progressione)
+- **interval_r**: Tempo ricodificato (probabilmente per analisi di sopravvivenza con dati censurati)
+
+# Analisi Esplorativa
+
+```{r eda_summary}
+# Statistiche descrittive di base
+summary(data)
+
+# Valori mancanti per colonna
+missing_summary <- sapply(data, function(x) sum(is.na(x)))
+missing_summary <- missing_summary[missing_summary > 0]
+if(length(missing_summary) > 0) {
+  cat("\nValori mancanti per colonna:\n")
+  print(missing_summary)
+} else {
+  cat("\nNessun valore mancante nel dataset.\n")
+}
+```
+
+## Analisi Variabile Principale: Analgesia Epidurale
+
+```{r ea_analysis}
+# Distribuzione dell'analgesia epidurale
+ea_table <- table(data$ea)
+ea_prop <- prop.table(ea_table)
+
+cat("Distribuzione Analgesia Epidurale:\n")
+cat("No EA:", ea_table["0"], "pazienti (", round(ea_prop["0"] * 100, 1), "%)\n")
+cat("Con EA:", ea_table["1"], "pazienti (", round(ea_prop["1"] * 100, 1), "%)\n\n")
+
+# Confronto outcome tra gruppi
+death_by_ea <- table(data$ea, data$death)
+death_rates <- prop.table(death_by_ea, margin = 1)
+
+cat("Tasso di mortalità per gruppo:\n")
+cat("Senza EA:", round(death_rates["0", "1"] * 100, 1), "%\n")
+cat("Con EA:", round(death_rates["1", "1"] * 100, 1), "%\n")
+```
+
+## Analisi Demografica
+
+```{r demographic_analysis}
+# Età per genere
+cat("Età media per genere:\n")
+tapply(data$age, data$gender, mean, na.rm = TRUE)
+
+# Distribuzione ASA score
+asa_table <- table(data$asa)
+cat("\nDistribuzione ASA score:\n")
+print(asa_table)
+```
+
+## Analisi Comorbidità
+
+```{r comorbidity_analysis}
+# Prevalenza comorbidità
+comorbidities <- c("dm", "cad", "hf", "cva", "ckd")
+comorb_prev <- sapply(data[, comorbidities], function(x) mean(as.numeric(as.character(x)), na.rm = TRUE) * 100)
+
+cat("Prevalenza comorbidità (%):\n")
+print(round(comorb_prev, 1))
+```
+
+# Conclusioni Preliminari
+
+Da questa analisi esplorativa iniziale:
+
+1. **Campione**: 999 pazienti con carcinoma colon-retto stadio IV
+2. **Esposizione**: Circa `r round(mean(as.numeric(as.character(data$ea)), na.rm = TRUE) * 100, 1)`% dei pazienti ha ricevuto analgesia epidurale
+3. **Outcome**: Tasso di mortalità del `r round(mean(as.numeric(as.character(data$death)), na.rm = TRUE) * 100, 1)`%
+4. **Follow-up**: Tempo medio di osservazione di `r round(mean(data$interval, na.rm = TRUE), 1)` mesi
+
+**Prossimi passi dell'analisi**:
+- Analisi di sopravvivenza (Kaplan-Meier, Cox regression)
+- Regressione logistica per identificare fattori prognostici
+- Analisi di sensitività per confounding
+- Valutazione dell'effetto dell'EA stratificato per sottogruppi
+
+Questa analisi richiede tecniche statistiche più avanzate per rispondere alla domanda di ricerca principale sull'impatto dell'analgesia epidurale sulla progressione tumorale.

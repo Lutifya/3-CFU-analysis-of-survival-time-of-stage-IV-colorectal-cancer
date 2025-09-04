@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# Main executable script for the analysis
+# Run this from the project root
+
+Rscript src/ms-analysis.R
