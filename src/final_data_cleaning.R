@@ -69,8 +69,13 @@ final_clean_dataset <- function(input_path, output_path) {
   # 4. CONVERSIONI DI TIPO OTTIMALI
   # ===============================
 
+  # Converti ajcc da factor a numerico (4a = 0, 4b = 1)
+  data$ajcc <- as.numeric(as.character(data$ajcc) == "4b")
+
+  cat("Variabile ajcc convertita a numerico binario (4a=0, 4b=1)\n")
+
   # Converti variabili categoriche a factor per analisi statistica
-  categorical_to_factor <- c("gender", "asa", "ajcc", "asa3", "dm", "cad", "hf", "cva", "ckd",
+  categorical_to_factor <- c("gender", "asa", "asa3", "dm", "cad", "hf", "cva", "ckd",
                             "laparoscopic", "ea", "rbc", "liver_only", "cell_diff",
                             "mucin_type", "signet_ring", "lymphovascularinvasion",
                             "perineural", "ct", "rt", "nactrt", "death", "progress")

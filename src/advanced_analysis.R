@@ -93,12 +93,19 @@ advanced_analyze_dataset <- function(data_path, output_dir) {
   cat("=== 4. ANALISI STRATIFICATA PER STADIO ===\n")
 
   # Effetto EA stratificato per stadio AJCC
+  stratified_results <- list()
   for(stage in unique(data$ajcc)) {
     subset_data <- data_surv[data_surv$ajcc == stage, ]
     if(nrow(subset_data) > 10) {  # Solo se ci sono abbastanza osservazioni
       km_stage <- survfit(Surv(time, death_num) ~ ea_num, data = subset_data)
       logrank_stage <- survdiff(Surv(time, death_num) ~ ea_num, data = subset_data)
       logrank_p_stage <- 1 - pchisq(logrank_stage$chisq, length(logrank_stage$n) - 1)
+
+      stratified_results[[as.character(stage)]] <- list(
+        n_patients = nrow(subset_data),
+        p_value = logrank_p_stage,
+        km_fit = km_stage
+      )
 
       cat("Stadio", stage, "- pazienti:", nrow(subset_data), "\n")
       cat("Log-rank p-value:", round(logrank_p_stage, 3), "\n")
@@ -128,8 +135,11 @@ advanced_analyze_dataset <- function(data_path, output_dir) {
     age_test = tidy(age_test),
     asa_test = tidy(asa_test),
     km_fit = km_fit,
+    survdiff_result = logrank_test,
     model1 = tidy(model1),
     model2 = tidy(model2),
+    stratified_results = stratified_results,
+    cea_by_ea = cea_by_ea,
     cea_test = tidy(cea_test)
   )
 

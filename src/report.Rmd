@@ -16,6 +16,25 @@ library(tidyverse)
 
 Questo report presenta un'analisi completa e riproduzione dello studio originale pubblicato su *PLOS Computational Biology* (DOI: 10.1371/journal.pcbi.1012946) che investiga l'effetto dell'analgesia epidurale (EA) sugli outcome oncologici in pazienti con carcinoma del colon-retto metastatico (stadio IV) sottoposti a resezione del tumore primario.
 
+## Informazioni sul Progetto
+
+**Dataset Originale**: 
+- **Fonte**: Colorectal cancer EHRs, Taipei 2018 Dataset
+- **DOI**: https://doi.org/10.1371/journal.pone.0200893
+- **Figshare**: https://figshare.com/articles/dataset/The_effect_of_epidural_analgesia_on_cancer_progression_in_patients_with_stage_IV_colorectal_cancer_after_primary_tumor_resection_A_retrospective_cohort_study/6846365
+
+**Articolo Scientifico**:
+- **Titolo**: The effect of epidural analgesia on cancer progression in patients with stage IV colorectal cancer after primary tumor resection: A retrospective cohort study
+- **DOI**: https://doi.org/10.1371/journal.pone.0200893
+- **Journal**: PLOS ONE 13(7): e0200893
+
+**Repository GitHub**:
+- **URL**: https://github.com/Lutifya/3-CFU-analysis-of-survival-time-of-stage-IV-colorectal-cancer
+- **Contatto**: s.quartuccio@campus.unimib.it
+
+**Workflow Seguito**: Passaggi 2-4 del flowchart di Chicco & Coelho (2025) - PLOS Comput Biol 21(4): e1012946
+**Soglia Significatività Statistica**: p < 0.005 (Benjamin et al., 2018 - Nat Hum Behav 2, 6-10)
+
 ## Obiettivi dello Studio Originale
 
 **Domanda di ricerca principale**: L'uso perioperatorio dell'analgesia epidurale influisce sulla progressione tumorale e sulla sopravvivenza nei pazienti con carcinoma del colon-retto metastatico?
@@ -111,6 +130,12 @@ cat("- **Casi CEA > 5000**: ", sum(data_raw$cea > 5000, na.rm=TRUE), "\n", sep="
 - **Cell differentiation**: Valore "0" (non valido) corretto a "9" (sconosciuto)
 - **Conversione fattori**: Tutte le variabili categoriche convertite a factor per analisi statistiche
 
+### 4. Conversione Variabili per Analisi Statistiche
+- **AJCC staging**: Convertito da categorico a numerico per modelli statistici:
+  - **4a** → **0** (Metastasi limitate a un organo)
+  - **4b** → **1** (Metastasi multiple organi)
+- **Motivazione**: Necessario per analisi di sopravvivenza e modelli di regressione che richiedono variabili numeriche
+
 ## Risultati della Pulizia
 
 ```{r cleaning_results}
@@ -172,9 +197,9 @@ head(data)
 ### Variabili Oncologiche
 - **cea**: Livello di antigene carcinoembrionale (CEA) - marker tumorale
 - **log_cea**: Logaritmo del CEA (trasformazione per normalizzare distribuzione skewed)
-- **ajcc**: Stadio secondo classificazione AJCC (American Joint Committee on Cancer):
-  - 4a: Metastasi limitate a un organo
-  - 4b: Metastasi multiple organi
+- **ajcc**: Stadio secondo classificazione AJCC (American Joint Committee on Cancer) - **convertito a numerico per analisi statistiche**:
+  - **0**: Stadio 4a - Metastasi limitate a un organo
+  - **1**: Stadio 4b - Metastasi multiple organi
 - **liver_only**: Metastasi esclusivamente epatica (1 = sì, 0 = no)
 - **cell_diff**: Grado di differenziazione cellulare (1 = ben differenziato, 2 = moderatamente, 3 = scarsamente)
 - **mucin_type**: Carcinoma mucinoso (1 = sì, 0 = no)
@@ -316,7 +341,7 @@ cat("Test chi-quadro: p =", round(lv_test$p.value, 3), "\n\n")
 ```{r comparison_summary}
 cat("### Sintesi Comparativa\n")
 cat("✓ **Prevalenza EA**: 16.5% (confermato)\n")
-cat("✓ **Bilanciamento gruppi**: Età, ASA, comorbidità simili (p>0.05)\n")
+cat("✓ **Bilanciamento gruppi**: Età, ASA, comorbidità simili (p>0.005)\n")
 cat("✓ **Nessuna differenza outcome**: PFS e OS simili tra gruppi\n")
 cat("✓ **Terapie adiuvanti**: Nessuna differenza significativa\n")
 cat("✓ **Caratteristiche patologiche**: Distribuzione simile tra gruppi\n")
@@ -344,28 +369,45 @@ adv_results <- readRDS("../results/advanced_analysis_results.rds")
 cat("### Test Statistici tra Gruppi EA\n")
 cat("- **Età**: p =", round(adv_results$age_test$p.value, 3), "(nessuna differenza significativa)\n")
 cat("- **ASA score**: p =", round(adv_results$asa_test$p.value, 3), "(gruppi ben bilanciati)\n")
-cat("- **Comorbidità**: Tutte p > 0.05 (distribuzione simile tra gruppi)\n\n")
+cat("- **Comorbidità**: Tutte p > 0.005 (distribuzione simile tra gruppi)\n\n")
 
 cat("### Analisi di Sopravvivenza\n")
-cat("- **Log-rank test**: p = 0.213 (nessuna differenza significativa nella sopravvivenza)\n")
-cat("- **Mediana sopravvivenza**: Senza EA = 32 mesi, Con EA = 35.6 mesi\n\n")
+# Calcola il p-value del log-rank test dinamicamente
+logrank_p <- 1 - pchisq(adv_results$survdiff_result$chisq, length(adv_results$survdiff_result$n) - 1)
+cat("- **Log-rank test**: p =", round(logrank_p, 3), "(nessuna differenza significativa nella sopravvivenza; soglia p < 0.005)\n")
+
+# Calcola mediane di sopravvivenza dinamicamente
+km_fit <- adv_results$km_fit
+cat("- **Mediana sopravvivenza**: Senza EA =", round(as.numeric(km_fit$table[1, "median"]), 1), "mesi, Con EA =", round(as.numeric(km_fit$table[2, "median"]), 1), "mesi\n\n")
 
 cat("### Modelli di Regressione Logistica\n")
 cat("**Modello grezzo (solo EA):**\n")
-cat("- OR = 0.90 (IC 95%: 0.64-1.26, p = 0.544)\n")
-cat("- Nessuna associazione significativa\n\n")
+model1_coefs <- adv_results$model1
+ea_coef <- model1_coefs[model1_coefs$term == "ea_num", ]
+cat("- OR =", round(exp(ea_coef$estimate), 2), "(IC 95%:", round(exp(ea_coef$estimate - 1.96 * ea_coef$std.error), 2), "-", round(exp(ea_coef$estimate + 1.96 * ea_coef$std.error), 2), ", p =", round(ea_coef$p.value, 3), ")\n")
+cat("- Nessuna associazione significativa (soglia p < 0.005)\n\n")
 
 cat("**Modello aggiustato (EA + confondenti):**\n")
-cat("- OR = 0.93 (IC 95%: 0.65-1.31, p = 0.660)\n")
-cat("- Nessuna associazione significativa dopo aggiustamento per età, ASA, comorbidità, CEA\n\n")
+model2_coefs <- adv_results$model2
+ea_coef2 <- model2_coefs[model2_coefs$term == "ea_num", ]
+cat("- OR =", round(exp(ea_coef2$estimate), 2), "(IC 95%:", round(exp(ea_coef2$estimate - 1.96 * ea_coef2$std.error), 2), "-", round(exp(ea_coef2$estimate + 1.96 * ea_coef2$std.error), 2), ", p =", round(ea_coef2$p.value, 3), ")\n")
+cat("- Nessuna associazione significativa dopo aggiustamento per età, ASA, comorbidità, CEA (soglia p < 0.005)\n\n")
 
 cat("### Analisi Stratificata per Stadio AJCC\n")
-cat("- **Stadio 4a**: p = 0.212 (nessuna differenza)\n")
-cat("- **Stadio 4b**: p = 0.894 (nessuna differenza)\n\n")
+cat("**Nota sulla codifica**: La variabile ajcc è stata convertita da categorica a numerica per le analisi statistiche:\n")
+cat("- **0** = Stadio 4a (Metastasi limitate a un organo)\n")
+cat("- **1** = Stadio 4b (Metastasi multiple organi)\n\n")
+stratified <- adv_results$stratified_results
+for(stage in names(stratified)) {
+  stage_label <- ifelse(stage == "0", "4a", "4b")
+  cat("- **Stadio", stage_label, "**: p =", round(stratified[[stage]]$p_value, 3), "(nessuna differenza significativa; soglia p < 0.005)\n")
+}
+cat("\n")
 
 cat("### Analisi Marker Tumorale (CEA)\n")
-cat("- Nessuna differenza significativa tra gruppi EA (p = 0.652)\n")
-cat("- Mediana CEA simile: 18.9 vs 19.17 ng/mL\n")
+cat("- Nessuna differenza significativa tra gruppi EA (p =", round(adv_results$cea_test$p.value, 3), "; soglia p < 0.005)\n")
+cea_medians <- adv_results$cea_by_ea
+cat("- Mediana CEA: Senza EA =", round(cea_medians$"0"["Median"], 2), "ng/mL, Con EA =", round(cea_medians$"1"["Median"], 2), "ng/mL\n")
 ```
 
 ## Determinanti Prognostici e Confronto con Studio Originale
@@ -418,11 +460,11 @@ Lo studio originale ha identificato sette fattori prognostici indipendenti attra
 - **Analisi propensity score**: HR = 0.89 (IC 95%: 0.67-1.18, p = 0.43)
 
 **Nostri risultati di riproduzione**:
-- **HR crudo per EA**: 0.90 (IC 95%: 0.64-1.26, p = 0.544)
-- **HR aggiustato**: 0.93 (IC 95%: 0.65-1.31, p = 0.660)
+- **HR crudo per EA**:", round(exp(ea_coef$estimate), 2), "(IC 95%:", round(exp(ea_coef$estimate - 1.96 * ea_coef$std.error), 2), "-", round(exp(ea_coef$estimate + 1.96 * ea_coef$std.error), 2), ", p =", round(ea_coef$p.value, 3), ")
+- **HR aggiustato**:", round(exp(ea_coef2$estimate), 2), "(IC 95%:", round(exp(ea_coef2$estimate - 1.96 * ea_coef2$std.error), 2), "-", round(exp(ea_coef2$estimate + 1.96 * ea_coef2$std.error), 2), ", p =", round(ea_coef2$p.value, 3), ")
 - **Analisi stratificata**: Nessuna differenza significativa negli stadi 4a e 4b
 
-**Conclusione del confronto**: I nostri risultati mostrano un'eccellente riproduzione dei risultati pubblicati, con valori HR praticamente identici (0.90 vs 0.90) e conferma dell'assenza di effetto significativo dell'EA sugli outcome oncologici dopo aggiustamento per i determinanti prognostici identificati.
+**Conclusione del confronto**: I nostri risultati mostrano un'eccellente riproduzione dei risultati pubblicati, con valori HR praticamente identici (", round(exp(ea_coef$estimate), 2), " vs 0.90) e conferma dell'assenza di effetto significativo dell'EA sugli outcome oncologici dopo aggiustamento per i determinanti prognostici identificati. Tutti i risultati sono valutati con soglia di significatività p < 0.005 secondo le raccomandazioni di Benjamin et al. (2018).
 
 ## Interpretazione dei Risultati
 

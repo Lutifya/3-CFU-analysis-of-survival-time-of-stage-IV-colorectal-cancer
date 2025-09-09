@@ -39,6 +39,7 @@ Following the flowchart from "A teaching proposal for a short course on biomedic
 - ✅ Data type conversions
 - ✅ Outlier detection and management (winsorization)
 - ✅ Categorical variable consistency checks
+- ✅ **AJCC staging conversion**: Converted from categorical to numeric (4a→0, 4b→1) for statistical modeling
 
 ### Step 3: Exploratory Data Analysis
 - ✅ Descriptive statistics for all variables
@@ -63,8 +64,23 @@ Following the flowchart from "A teaching proposal for a short course on biomedic
 - **Figshare**: https://figshare.com/articles/dataset/The_effect_of_epidural_analgesia_on_cancer_progression_in_patients_with_stage_IV_colorectal_cancer_after_primary_tumor_resection_A_retrospective_cohort_study/6846365
 - **Original Study**: PLOS ONE 13(7): e0200893
 
+## Variable Coding
+
+**Key Variables for Analysis:**
+- **ea** (Epidural Analgesia): 0 = No, 1 = Yes
+- **ajcc** (AJCC Stage - converted to numeric): 0 = Stage 4a (single organ metastasis), 1 = Stage 4b (multiple organ metastasis)
+- **death**: 0 = Alive, 1 = Dead
+- **asa**: ASA physical status score (1-5)
+- **gender**: 1 = Male, 2 = Female
+
+**Clinical Variables:**
+- **dm, cad, hf, cva, ckd**: Comorbidities (0 = No, 1 = Yes)
+- **cea**: Carcinoembryonic antigen level (ng/mL)
+- **cell_diff**: Cell differentiation (1 = Well, 2 = Moderate, 3 = Poor, 9 = Unknown)
+
 ## Deliverables
 
 - **Clean CSV**: `results/dataset_final_cleaned.csv` (999 obs, 32 vars, 0 missing)
 - **Analysis Report**: `results/report.pdf` (comprehensive analysis report)
+- **Report PDF Link**: https://github.com/Lutifya/3-CFU-analysis-of-survival-time-of-stage-IV-colorectal-cancer/blob/main/results/report.pdf
 - **GitHub Repository**: https://github.com/Lutifya/3-CFU-analysis-of-survival-time-of-stage-IV-colorectal-cancer
