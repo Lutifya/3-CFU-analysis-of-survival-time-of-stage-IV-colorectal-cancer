@@ -5,6 +5,9 @@ date: "`r Sys.Date()`"
 output:
   pdf_document:
     latex_engine: xelatex
+    geometry: margin=1in
+    fontsize: 10pt
+    linestretch: 1.1
 ---
 
 ```{r setup, include=FALSE}
@@ -283,21 +286,36 @@ nactrt_by_ea <- table(data$nactrt, data$ea)
 cat("Neoadjuvant chemio/radioterapia:\n")
 print(nactrt_by_ea)
 nactrt_test <- chisq.test(nactrt_by_ea)
-cat("Test chi-quadro: p =", round(nactrt_test$p.value, 3), "\n\n")
+cat("Test chi-quadro: p =", round(nactrt_test$p.value, 3))
+if(nactrt_test$p.value < 0.005) {
+  cat(" (ASSOCIAZIONE SIGNIFICATIVA - soglia p < 0.005)\n\n")
+} else {
+  cat(" (nessuna associazione significativa - soglia p < 0.005)\n\n")
+}
 
 # Analisi chemotherapy postoperatoria
 ct_by_ea <- table(data$ct, data$ea)
 cat("Chemotherapy postoperatoria:\n")
 print(ct_by_ea)
 ct_test <- chisq.test(ct_by_ea)
-cat("Test chi-quadro: p =", round(ct_test$p.value, 3), "\n\n")
+cat("Test chi-quadro: p =", round(ct_test$p.value, 3))
+if(ct_test$p.value < 0.005) {
+  cat(" (ASSOCIAZIONE SIGNIFICATIVA - soglia p < 0.005)\n\n")
+} else {
+  cat(" (nessuna associazione significativa - soglia p < 0.005)\n\n")
+}
 
 # Analisi radiotherapy
 rt_by_ea <- table(data$rt, data$ea)
 cat("Radiotherapy:\n")
 print(rt_by_ea)
 rt_test <- chisq.test(rt_by_ea)
-cat("Test chi-quadro: p =", round(rt_test$p.value, 3), "\n\n")
+cat("Test chi-quadro: p =", round(rt_test$p.value, 3))
+if(rt_test$p.value < 0.005) {
+  cat(" (ASSOCIAZIONE SIGNIFICATIVA - soglia p < 0.005)\n\n")
+} else {
+  cat(" (nessuna associazione significativa - soglia p < 0.005)\n\n")
+}
 ```
 
 ## Analisi Caratteristiche Patologiche
@@ -310,21 +328,36 @@ perineural_by_ea <- table(data$perineural, data$ea)
 cat("Invasione perineurale:\n")
 print(perineural_by_ea)
 perineural_test <- chisq.test(perineural_by_ea)
-cat("Test chi-quadro: p =", round(perineural_test$p.value, 3), "\n\n")
+cat("Test chi-quadro: p =", round(perineural_test$p.value, 3))
+if(perineural_test$p.value < 0.005) {
+  cat(" (ASSOCIAZIONE SIGNIFICATIVA - soglia p < 0.005)\n\n")
+} else {
+  cat(" (nessuna associazione significativa - soglia p < 0.005)\n\n")
+}
 
 # Cell differentiation
 cell_diff_by_ea <- table(data$cell_diff, data$ea)
 cat("Differenziazione cellulare:\n")
 print(cell_diff_by_ea)
 cell_diff_test <- chisq.test(cell_diff_by_ea)
-cat("Test chi-quadro: p =", round(cell_diff_test$p.value, 3), "\n\n")
+cat("Test chi-quadro: p =", round(cell_diff_test$p.value, 3))
+if(cell_diff_test$p.value < 0.005) {
+  cat(" (ASSOCIAZIONE SIGNIFICATIVA - soglia p < 0.005)\n\n")
+} else {
+  cat(" (nessuna associazione significativa - soglia p < 0.005)\n\n")
+}
 
 # Lymphovascular invasion
 lv_by_ea <- table(data$lymphovascularinvasion, data$ea)
 cat("Invasione linfonodale/vascolare:\n")
 print(lv_by_ea)
 lv_test <- chisq.test(lv_by_ea)
-cat("Test chi-quadro: p =", round(lv_test$p.value, 3), "\n\n")
+cat("Test chi-quadro: p =", round(lv_test$p.value, 3))
+if(lv_test$p.value < 0.005) {
+  cat(" (ASSOCIAZIONE SIGNIFICATIVA - soglia p < 0.005)\n\n")
+} else {
+  cat(" (nessuna associazione significativa - soglia p < 0.005)\n\n")
+}
 ```
 
 ## Confronto con Risultati Originali
@@ -362,7 +395,7 @@ Da questa analisi esplorativa iniziale:
 
 ## Risultati Analisi Statistica Avanzata
 
-```{r advanced_results}
+```{r advanced_results, echo=FALSE, results='asis'}
 # Carica risultati analisi avanzata
 adv_results <- readRDS("../results/advanced_analysis_results.rds")
 
@@ -373,41 +406,56 @@ cat("- **Comorbidità**: Tutte p > 0.005 (distribuzione simile tra gruppi)\n\n")
 
 cat("### Analisi di Sopravvivenza\n")
 # Calcola il p-value del log-rank test dinamicamente
-logrank_p <- 1 - pchisq(adv_results$survdiff_result$chisq, length(adv_results$survdiff_result$n) - 1)
-cat("- **Log-rank test**: p =", round(logrank_p, 3), "(nessuna differenza significativa nella sopravvivenza; soglia p < 0.005)\n")
+logrank_p <- 1 - pchisq(adv_results$survdiff_result$chisq,
+                       length(adv_results$survdiff_result$n) - 1)
+cat("- **Log-rank test**: p =", round(logrank_p, 3),
+    "(nessuna differenza significativa nella sopravvivenza; soglia p < 0.005)\n")
 
 # Calcola mediane di sopravvivenza dinamicamente
 km_fit <- adv_results$km_fit
-cat("- **Mediana sopravvivenza**: Senza EA =", round(as.numeric(km_fit$table[1, "median"]), 1), "mesi, Con EA =", round(as.numeric(km_fit$table[2, "median"]), 1), "mesi\n\n")
+cat("- **Mediana sopravvivenza**: Senza EA =",
+    round(as.numeric(km_fit$table[1, "median"]), 1), "mesi, Con EA =",
+    round(as.numeric(km_fit$table[2, "median"]), 1), "mesi\n\n")
 
 cat("### Modelli di Regressione Logistica\n")
 cat("**Modello grezzo (solo EA):**\n")
 model1_coefs <- adv_results$model1
 ea_coef <- model1_coefs[model1_coefs$term == "ea_num", ]
-cat("- OR =", round(exp(ea_coef$estimate), 2), "(IC 95%:", round(exp(ea_coef$estimate - 1.96 * ea_coef$std.error), 2), "-", round(exp(ea_coef$estimate + 1.96 * ea_coef$std.error), 2), ", p =", round(ea_coef$p.value, 3), ")\n")
+cat("- OR =", round(exp(ea_coef$estimate), 2),
+    "(IC 95%:", round(exp(ea_coef$estimate - 1.96 * ea_coef$std.error), 2),
+    "-", round(exp(ea_coef$estimate + 1.96 * ea_coef$std.error), 2),
+    ", p =", round(ea_coef$p.value, 3), ")\n")
 cat("- Nessuna associazione significativa (soglia p < 0.005)\n\n")
 
 cat("**Modello aggiustato (EA + confondenti):**\n")
 model2_coefs <- adv_results$model2
 ea_coef2 <- model2_coefs[model2_coefs$term == "ea_num", ]
-cat("- OR =", round(exp(ea_coef2$estimate), 2), "(IC 95%:", round(exp(ea_coef2$estimate - 1.96 * ea_coef2$std.error), 2), "-", round(exp(ea_coef2$estimate + 1.96 * ea_coef2$std.error), 2), ", p =", round(ea_coef2$p.value, 3), ")\n")
-cat("- Nessuna associazione significativa dopo aggiustamento per età, ASA, comorbidità, CEA (soglia p < 0.005)\n\n")
+cat("- OR =", round(exp(ea_coef2$estimate), 2),
+    "(IC 95%:", round(exp(ea_coef2$estimate - 1.96 * ea_coef2$std.error), 2),
+    "-", round(exp(ea_coef2$estimate + 1.96 * ea_coef2$std.error), 2),
+    ", p =", round(ea_coef2$p.value, 3), ")\n")
+cat("- Nessuna associazione significativa dopo aggiustamento per età, ASA, comorbidità, CEA\n")
+cat("  (soglia p < 0.005)\n\n")
 
 cat("### Analisi Stratificata per Stadio AJCC\n")
-cat("**Nota sulla codifica**: La variabile ajcc è stata convertita da categorica a numerica per le analisi statistiche:\n")
+cat("**Nota sulla codifica**: La variabile ajcc è stata convertita da categorica a numerica\n")
+cat("per le analisi statistiche:\n")
 cat("- **0** = Stadio 4a (Metastasi limitate a un organo)\n")
 cat("- **1** = Stadio 4b (Metastasi multiple organi)\n\n")
 stratified <- adv_results$stratified_results
 for(stage in names(stratified)) {
   stage_label <- ifelse(stage == "0", "4a", "4b")
-  cat("- **Stadio", stage_label, "**: p =", round(stratified[[stage]]$p_value, 3), "(nessuna differenza significativa; soglia p < 0.005)\n")
+  cat("- **Stadio", stage_label, "**: p =", round(stratified[[stage]]$p_value, 3),
+      "(nessuna differenza significativa; soglia p < 0.005)\n")
 }
 cat("\n")
 
 cat("### Analisi Marker Tumorale (CEA)\n")
-cat("- Nessuna differenza significativa tra gruppi EA (p =", round(adv_results$cea_test$p.value, 3), "; soglia p < 0.005)\n")
+cat("- Nessuna differenza significativa tra gruppi EA (p =",
+    round(adv_results$cea_test$p.value, 3), "; soglia p < 0.005)\n")
 cea_medians <- adv_results$cea_by_ea
-cat("- Mediana CEA: Senza EA =", round(cea_medians$"0"["Median"], 2), "ng/mL, Con EA =", round(cea_medians$"1"["Median"], 2), "ng/mL\n")
+cat("- Mediana CEA: Senza EA =", round(cea_medians$"0"["Median"], 2),
+    "ng/mL, Con EA =", round(cea_medians$"1"["Median"], 2), "ng/mL\n")
 ```
 
 ## Determinanti Prognostici e Confronto con Studio Originale
@@ -460,11 +508,25 @@ Lo studio originale ha identificato sette fattori prognostici indipendenti attra
 - **Analisi propensity score**: HR = 0.89 (IC 95%: 0.67-1.18, p = 0.43)
 
 **Nostri risultati di riproduzione**:
-- **HR crudo per EA**:", round(exp(ea_coef$estimate), 2), "(IC 95%:", round(exp(ea_coef$estimate - 1.96 * ea_coef$std.error), 2), "-", round(exp(ea_coef$estimate + 1.96 * ea_coef$std.error), 2), ", p =", round(ea_coef$p.value, 3), ")
-- **HR aggiustato**:", round(exp(ea_coef2$estimate), 2), "(IC 95%:", round(exp(ea_coef2$estimate - 1.96 * ea_coef2$std.error), 2), "-", round(exp(ea_coef2$estimate + 1.96 * ea_coef2$std.error), 2), ", p =", round(ea_coef2$p.value, 3), ")
+- **HR crudo per EA**:", round(exp(ea_coef$estimate), 2),
+  "(IC 95%:", round(exp(ea_coef$estimate - 1.96 * ea_coef$std.error), 2),
+  "-", round(exp(ea_coef$estimate + 1.96 * ea_coef$std.error), 2),
+  ", p =", round(ea_coef$p.value, 3), ")
+- **HR aggiustato**:", round(exp(ea_coef2$estimate), 2),
+  "(IC 95%:", round(exp(ea_coef2$estimate - 1.96 * ea_coef2$std.error), 2),
+  "-", round(exp(ea_coef2$estimate + 1.96 * ea_coef2$std.error), 2),
+  ", p =", round(ea_coef2$p.value, 3), ")
 - **Analisi stratificata**: Nessuna differenza significativa negli stadi 4a e 4b
 
-**Conclusione del confronto**: I nostri risultati mostrano un'eccellente riproduzione dei risultati pubblicati, con valori HR praticamente identici (", round(exp(ea_coef$estimate), 2), " vs 0.90) e conferma dell'assenza di effetto significativo dell'EA sugli outcome oncologici dopo aggiustamento per i determinanti prognostici identificati. Tutti i risultati sono valutati con soglia di significatività p < 0.005 secondo le raccomandazioni di Benjamin et al. (2018).
+**Conclusione del confronto**: I nostri risultati mostrano un'eccellente riproduzione
+dei risultati pubblicati, con valori HR praticamente identici
+(", round(exp(ea_coef$estimate), 2), " vs 0.90) e conferma dell'assenza di effetto
+significativo dell'EA sugli outcome oncologici dopo aggiustamento per i determinanti
+prognostici identificati. Tutti i risultati sono valutati con soglia di significatività
+p < 0.005 secondo le raccomandazioni di Benjamin et al. (2018).
+significativo dell'EA sugli outcome oncologici dopo aggiustamento per i determinanti
+prognostici identificati. Tutti i risultati sono valutati con soglia di significatività
+p < 0.005 secondo le raccomandazioni di Benjamin et al. (2018).
 
 ## Interpretazione dei Risultati
 

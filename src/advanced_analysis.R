@@ -27,19 +27,34 @@ advanced_analyze_dataset <- function(data_path, output_dir) {
   cat("Test t per età tra gruppi EA:\n")
   cat("Media senza EA:", round(age_test$estimate[1], 1), "anni\n")
   cat("Media con EA:", round(age_test$estimate[2], 1), "anni\n")
-  cat("p-value:", round(age_test$p.value, 3), "\n\n")
+  cat("p-value:", round(age_test$p.value, 3))
+  if(age_test$p.value < 0.005) {
+    cat(" (DIFFERENZA SIGNIFICATIVA - soglia p < 0.005)\n\n")
+  } else {
+    cat(" (nessuna differenza significativa - soglia p < 0.005)\n\n")
+  }
 
   # Test Fisher per ASA score (più appropriato per tabelle con frequenze basse)
   asa_test <- fisher.test(table(data$ea, data$asa))
   cat("Test Fisher per ASA score:\n")
-  cat("p-value:", round(asa_test$p.value, 3), "\n\n")
+  cat("p-value:", round(asa_test$p.value, 3))
+  if(asa_test$p.value < 0.005) {
+    cat(" (DIFFERENZA SIGNIFICATIVA - soglia p < 0.005)\n\n")
+  } else {
+    cat(" (gruppi ben bilanciati - soglia p < 0.005)\n\n")
+  }
 
   # Test per comorbidità
   comorbidities <- c("dm", "cad", "hf", "cva", "ckd")
   cat("Test chi-quadro per comorbidità:\n")
   for(comorb in comorbidities) {
     test <- chisq.test(table(data$ea, data[[comorb]]))
-    cat(comorb, "- p-value:", round(test$p.value, 3), "\n")
+    cat(comorb, "- p-value:", round(test$p.value, 3))
+    if(test$p.value < 0.005) {
+      cat(" (SIGNIFICATIVO)\n")
+    } else {
+      cat(" (non significativo)\n")
+    }
   }
   cat("\n")
 
@@ -65,7 +80,12 @@ advanced_analyze_dataset <- function(data_path, output_dir) {
 
   cat("Analisi Kaplan-Meier:\n")
   cat("Gruppi confrontati: Senza EA vs Con EA\n")
-  cat("Log-rank test p-value:", round(logrank_p, 3), "\n\n")
+  cat("Log-rank test p-value:", round(logrank_p, 3))
+  if(logrank_p < 0.005) {
+    cat(" (DIFFERENZA SIGNIFICATIVA nella sopravvivenza - soglia p < 0.005)\n\n")
+  } else {
+    cat(" (nessuna differenza significativa nella sopravvivenza - soglia p < 0.005)\n\n")
+  }
 
   # 3. REGRESSIONE LOGISTICA PER MORTALITA
   # =====================================
@@ -77,7 +97,12 @@ advanced_analyze_dataset <- function(data_path, output_dir) {
   cat("Modello 1 - Solo EA:\n")
   cat("OR per EA:", round(exp(coef(model1)[2]), 2), "\n")
   cat("IC 95%:", round(exp(confint(model1)[2,]), 2), "\n")
-  cat("p-value:", round(summary(model1)$coefficients[2,4], 3), "\n\n")
+  cat("p-value:", round(summary(model1)$coefficients[2,4], 3))
+  if(summary(model1)$coefficients[2,4] < 0.005) {
+    cat(" (ASSOCIAZIONE SIGNIFICATIVA)\n\n")
+  } else {
+    cat(" (nessuna associazione significativa - soglia p < 0.005)\n\n")
+  }
 
   # Modello aggiustato: controllando per confondenti
   model2 <- glm(death_num ~ ea_num + age + asa + dm + cad + hf + cva + ckd + cea,
@@ -85,7 +110,12 @@ advanced_analyze_dataset <- function(data_path, output_dir) {
   cat("Modello 2 - EA aggiustato per confondenti:\n")
   cat("OR per EA:", round(exp(coef(model2)[2]), 2), "\n")
   cat("IC 95%:", round(exp(confint(model2)[2,]), 2), "\n")
-  cat("p-value:", round(summary(model2)$coefficients[2,4], 3), "\n\n")
+  cat("p-value:", round(summary(model2)$coefficients[2,4], 3))
+  if(summary(model2)$coefficients[2,4] < 0.005) {
+    cat(" (ASSOCIAZIONE SIGNIFICATIVA dopo aggiustamento)\n\n")
+  } else {
+    cat(" (nessuna associazione significativa dopo aggiustamento - soglia p < 0.005)\n\n")
+  }
 
   # 4. ANALISI STRATIFICATA PER STADIO AJCC
   # ======================================
