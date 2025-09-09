@@ -5,9 +5,8 @@ date: "`r Sys.Date()`"
 output:
   pdf_document:
     latex_engine: xelatex
-    geometry: margin=1in
-    fontsize: 10pt
-    linestretch: 1.1
+geometry: margin=1in
+fontsize: 10pt
 ---
 
 ```{r setup, include=FALSE}
